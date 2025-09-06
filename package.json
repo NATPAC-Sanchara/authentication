@@ -43,6 +43,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.5",
     "@types/nodemailer": "^6.4.14",
+    "@vercel/node": "^3.0.0",
     "prisma": "^6.15.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"
