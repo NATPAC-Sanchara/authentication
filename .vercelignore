@@ -13,5 +13,4 @@ Thumbs.db
 *.swo
 coverage
 dist
-src
 prisma/migrations
