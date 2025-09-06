@@ -15,6 +15,30 @@ const app = express();
 // Trust proxy for accurate IP addresses (important for Vercel)
 app.set('trust proxy', 1);
 
+// Initialize database connection for serverless
+import { prisma } from './config/database';
+import { emailService } from './services/emailService';
+
+// Initialize services on cold start
+const initializeServices = async () => {
+  try {
+    await prisma.$connect();
+    console.log('✅ Database connected successfully');
+    
+    const emailConnected = await emailService.verifyConnection();
+    if (emailConnected) {
+      console.log('✅ Email service connected successfully');
+    } else {
+      console.log('⚠️  Email service connection failed - check your email configuration');
+    }
+  } catch (error) {
+    console.error('❌ Failed to initialize services:', error);
+  }
+};
+
+// Initialize services
+initializeServices();
+
 // Security middleware
 app.use(securityHeaders);
 app.use(corsOptions);
