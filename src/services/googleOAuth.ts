@@ -60,10 +60,11 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenRe
 }
 
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdTokenPayload> {
-  const { header } = jwt.decode(idToken, { complete: true }) as { header: JwtHeader } | null;
-  if (!header || !header.kid) {
+  const decoded = jwt.decode(idToken, { complete: true }) as { header: JwtHeader } | null;
+  if (!decoded || !decoded.header || !decoded.header.kid) {
     throw new Error('Invalid id_token header');
   }
+  const { header } = decoded;
 
   const { data } = await axios.get<{ keys: Array<{ kid: string; alg: string; x5c: string[] }> }>(GOOGLE_JWKS_URL, { timeout: 10000 });
   const matchingKey = data.keys.find(k => k.kid === header.kid);
