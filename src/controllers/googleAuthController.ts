@@ -7,6 +7,10 @@ import { config } from '../config/env';
 import { buildGoogleAuthUrl, createState, exchangeCodeForTokens, verifyGoogleIdToken, verifyState } from '../services/googleOAuth';
 
 export const googleAuth = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  if (!config.google.enabled) {
+    res.status(503).json({ success: false, message: 'Google OAuth is disabled' });
+    return;
+  }
   const redirect = typeof req.query.redirect === 'string' ? req.query.redirect : null;
   const state = createState({ redirect });
   const url = buildGoogleAuthUrl(state);
@@ -14,6 +18,10 @@ export const googleAuth = asyncHandler(async (req: Request, res: Response): Prom
 });
 
 export const googleCallback = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  if (!config.google.enabled) {
+    res.status(503).json({ success: false, message: 'Google OAuth is disabled' });
+    return;
+  }
   const { code, state } = req.query as { code?: string; state?: string };
 
   if (!code) {

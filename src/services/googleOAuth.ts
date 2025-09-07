@@ -31,6 +31,9 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 
 export function buildGoogleAuthUrl(state: string): string {
+  if (!config.google.enabled) {
+    throw new Error('Google OAuth is disabled');
+  }
   const params = new URLSearchParams({
     client_id: config.google.clientId,
     redirect_uri: config.google.redirectUri,
@@ -45,6 +48,9 @@ export function buildGoogleAuthUrl(state: string): string {
 }
 
 export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenResponse> {
+  if (!config.google.enabled) {
+    throw new Error('Google OAuth is disabled');
+  }
   const body = new URLSearchParams({
     code,
     client_id: config.google.clientId,
@@ -60,14 +66,16 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenRe
 }
 
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdTokenPayload> {
+  if (!config.google.enabled) {
+    throw new Error('Google OAuth is disabled');
+  }
   const decoded = jwt.decode(idToken, { complete: true }) as { header: JwtHeader } | null;
   if (!decoded || !decoded.header || !decoded.header.kid) {
     throw new Error('Invalid id_token header');
   }
-  const { header } = decoded;
 
   const { data } = await axios.get<{ keys: Array<{ kid: string; alg: string; x5c: string[] }> }>(GOOGLE_JWKS_URL, { timeout: 10000 });
-  const matchingKey = data.keys.find(k => k.kid === header.kid);
+  const matchingKey = data.keys.find(k => k.kid === decoded.header.kid);
   if (!matchingKey || !matchingKey.x5c || matchingKey.x5c.length === 0) {
     throw new Error('Unable to find matching Google public key');
   }
