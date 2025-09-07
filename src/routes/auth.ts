@@ -4,6 +4,7 @@ import { validateRequest } from '../utils/validation';
 import { signUpSchema, signInSchema, verifyOTPSchema, resendOTPSchema } from '../utils/validation';
 import { authenticateToken } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/security';
+import { googleAuth, googleCallback } from '../controllers/googleAuthController';
 
 const router = Router();
 
@@ -12,6 +13,8 @@ router.post('/signup', authRateLimiter, validateRequest(signUpSchema), signUp);
 router.post('/verify-otp', authRateLimiter, validateRequest(verifyOTPSchema), verifyOTP);
 router.post('/resend-otp', authRateLimiter, validateRequest(resendOTPSchema), resendOTP);
 router.post('/signin', authRateLimiter, validateRequest(signInSchema), signIn);
+router.get('/google', authRateLimiter, googleAuth);
+router.get('/google/callback', authRateLimiter, googleCallback);
 
 // Protected routes
 router.get('/profile', authenticateToken, getProfile);

@@ -2,7 +2,7 @@
 
 A secure, scalable backend authentication system built with Express.js, TypeScript, and PostgreSQL, optimized for deployment on Vercel.
 
-## 🚀 Features
+## Features
 
 - **Secure Authentication**: JWT-based authentication with Argon2 password hashing
 - **Email Verification**: OTP-based email verification with Nodemailer
@@ -12,13 +12,13 @@ A secure, scalable backend authentication system built with Express.js, TypeScri
 - **Deployment**: Optimized for Vercel serverless deployment
 - **Error Handling**: Comprehensive error handling and logging
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Node.js 18+ 
 - PostgreSQL database
 - npm or yarn
 
-## 🛠️ Installation
+## Installation
 
 1. **Clone the repository**
    ```bash
@@ -70,7 +70,7 @@ A secure, scalable backend authentication system built with Express.js, TypeScri
    npm run dev
    ```
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 src/
@@ -96,7 +96,7 @@ src/
 └── index.ts         # Server entry point
 ```
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Authentication
 
@@ -196,6 +196,146 @@ Content-Type: application/json
 ```
 
 **Note:** Sign in is only allowed after successful email verification.
+#### Google OAuth
+
+```http
+GET /api/auth/google
+```
+
+Redirects to Google consent screen. Optional query param `redirect` can be provided to deep-link back to your mobile app or web URL. On success, the JWT will be appended as URL fragment: `#token=<JWT>`.
+
+```http
+GET /api/auth/google/callback?code=...&state=...
+```
+
+Returns JWT on success.
+
+Example success response:
+```json
+{
+  "success": true,
+  "message": "Google sign-in successful",
+  "data": {
+    "user": {
+      "id": "clxyz...",
+      "email": "user@example.com",
+      "isVerified": true,
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "token": "<jwt>"
+  }
+}
+```
+
+## Flutter (Android) Integration Guide — Google Sign-In
+
+This backend supports a mobile-friendly OAuth flow with an optional `redirect` parameter so your Flutter app can receive the final JWT without hosting an intermediate page.
+
+### 1) Backend and Google Cloud setup
+- Ensure backend env vars are set with real values: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`.
+- In Google Cloud Console → Credentials → OAuth 2.0 Client IDs:
+  - Add the backend callback to Authorized redirect URIs: `https://your.api.com/api/auth/google/callback` (and a local dev URL if needed).
+
+### 2) App deep link (AndroidManifest)
+Choose a stable deep link for your app, e.g. `myapp://auth/callback`, so the backend can redirect back with the JWT.
+
+AndroidManifest.xml:
+```xml
+<application>
+  <activity android:name=".MainActivity" android:exported="true">
+    <intent-filter>
+      <action android:name="android.intent.action.VIEW"/>
+      <category android:name="android.intent.category.DEFAULT"/>
+      <category android:name="android.intent.category.BROWSABLE"/>
+      <data android:scheme="myapp" android:host="auth" android:path="/callback"/>
+    </intent-filter>
+  </activity>
+</application>
+```
+
+### 3) Start the OAuth flow from Flutter
+- Use `url_launcher` to open the backend OAuth URL in a Custom Tab / external browser.
+- Pass your deep link as a `redirect` query param. On success the backend will redirect to your deep link with `#token=<JWT>` as URL fragment.
+
+pubspec.yaml:
+```yaml
+dependencies:
+  url_launcher: ^6.3.0
+  uni_links: ^0.5.1
+```
+
+Dart example (launch):
+```dart
+import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
+
+Future<void> startGoogleSignIn() async {
+  final backendBase = Platform.isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+  final redirect = Uri.encodeComponent('myapp://auth/callback');
+  final url = Uri.parse('$backendBase/api/auth/google?redirect=$redirect');
+
+  if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+    throw Exception('Could not launch $url');
+  }
+}
+```
+
+### 4) Receive the JWT via deep link
+- Use `uni_links` to handle incoming links in your app.
+- Parse the token from the URL fragment after `#`.
+
+Dart example (receive):
+```dart
+import 'dart:async';
+import 'package:uni_links/uni_links.dart';
+
+StreamSubscription? _sub;
+
+void initDeepLinkListener(void Function(String jwt) onToken) {
+  _sub = uriLinkStream.listen((Uri? uri) {
+    if (uri == null) return;
+    // Example: myapp://auth/callback#token=eyJhbGciOi...
+    final fragment = uri.fragment; // 'token=...&foo=bar'
+    final pairs = fragment.split('&');
+    final map = <String, String>{};
+    for (final p in pairs) {
+      final i = p.indexOf('=');
+      if (i > 0) map[p.substring(0, i)] = Uri.decodeComponent(p.substring(i + 1));
+    }
+    final jwt = map['token'];
+    if (jwt != null && jwt.isNotEmpty) {
+      onToken(jwt);
+    }
+  }, onError: (err) {
+    // Handle errors appropriately
+  });
+}
+
+void disposeDeepLinkListener() {
+  _sub?.cancel();
+}
+```
+
+Store the JWT securely (e.g., flutter_secure_storage) and use it in the `Authorization: Bearer <token>` header for your API calls.
+
+### 5) Alternative: JSON callback (no deep link)
+If you prefer to get JSON instead of a redirect:
+1) Launch the OAuth flow without `redirect`.
+2) Complete Google consent in a browser.
+3) The backend responds to `GET /api/auth/google/callback` with JSON containing `{ user, token }`.
+
+### 6) API summary for Flutter devs
+- `GET /api/auth/google?redirect=myapp://auth/callback`
+  - 302 redirect → Google consent → redirects back to `myapp://auth/callback#token=<JWT>` on success.
+- `GET /api/auth/google/callback?code=...&state=...`
+  - If no `redirect` was provided, returns JSON `{ success, message, data: { user, token } }`.
+
+Common errors to handle:
+- 400: missing/invalid parameters (`code`, `state`).
+- 401: Google email not verified.
+- 409: account exists but not linked (when `GOOGLE_LINK_ON_EMAIL_MATCH=false`).
+- 500: unexpected server error.
 
 #### Get Profile (Protected)
 ```http
@@ -234,7 +374,7 @@ GET /api/health
 }
 ```
 
-## 🔒 Security Features
+## Security Features
 
 ### Password Requirements
 - Minimum 8 characters
@@ -252,7 +392,7 @@ GET /api/health
 - CORS configuration
 - Content Security Policy
 
-## 🚀 Deployment on Vercel
+## Deployment on Vercel
 
 ### 1. Prepare for Deployment
 ```bash
@@ -276,15 +416,16 @@ Set these environment variables in your Vercel dashboard:
 - `JWT_SECRET`: A secure random string for JWT signing
 - `JWT_EXPIRES_IN`: Token expiration time (default: "7d")
 - `NODE_ENV`: Set to "production"
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_LINK_ON_EMAIL_MATCH`
 
 ### 4. Database Migration
 After deployment, run the database migration:
 ```bash
 vercel env pull .env.local
-npx prisma db push
+npx prisma migrate deploy
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing with cURL
 
@@ -322,7 +463,7 @@ curl -X GET http://localhost:3000/api/auth/profile \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-## 📝 Available Scripts
+## Available Scripts
 
 - `npm run dev` - Start development server with hot reload
 - `npm run build` - Build the project for production
@@ -332,7 +473,7 @@ curl -X GET http://localhost:3000/api/auth/profile \
 - `npm run db:migrate` - Run database migrations
 - `npm run db:studio` - Open Prisma Studio
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -352,8 +493,12 @@ curl -X GET http://localhost:3000/api/auth/profile \
 | `EMAIL_PASSWORD` | SMTP password/app password | "nodc wmew efwn etyi" |
 | `OTP_EXPIRY_MINUTES` | OTP expiration time in minutes | 10 |
 | `OTP_LENGTH` | OTP code length | 6 |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | Required |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Required |
+| `GOOGLE_REDIRECT_URI` | OAuth redirect URI | Required |
+| `GOOGLE_LINK_ON_EMAIL_MATCH` | Auto-link Google on email match | false |
 
-## 🛡️ Security Best Practices
+## Security Best Practices
 
 1. **Password Hashing**: Uses Argon2id for secure password hashing
 2. **JWT Security**: Tokens include issuer and audience claims
@@ -365,7 +510,7 @@ curl -X GET http://localhost:3000/api/auth/profile \
 8. **CORS**: Configurable cross-origin resource sharing
 9. **Security Headers**: Helmet.js provides security headers
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -401,11 +546,11 @@ curl -X GET http://localhost:3000/api/auth/profile \
    - Check if user exists and is verified
    - Verify password is correct
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -413,6 +558,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 4. Push to the branch
 5. Create a Pull Request
 
-## 📞 Support
+## Support
 
 For support, please open an issue in the repository or contact the development team.

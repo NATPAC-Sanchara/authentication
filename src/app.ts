@@ -72,6 +72,8 @@ app.get('/', (req, res) => {
       verifyOtp: '/api/auth/verify-otp',
       resendOtp: '/api/auth/resend-otp',
       signin: '/api/auth/signin',
+      googleAuth: '/api/auth/google',
+      googleCallback: '/api/auth/google/callback',
       profile: '/api/auth/profile',
     },
   });

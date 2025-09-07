@@ -1,6 +1,8 @@
 export interface User {
   id: string;
   email: string;
+  googleId?: string | null;
+  profilePicture?: string | null;
   isVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
