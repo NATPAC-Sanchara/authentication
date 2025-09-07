@@ -4,6 +4,7 @@ export interface User {
   googleId?: string | null;
   profilePicture?: string | null;
   isVerified: boolean;
+  role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   createdAt: Date;
   updatedAt: Date;
 }

@@ -42,6 +42,9 @@ export const config = {
     expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES || '10'),
     length: parseInt(process.env.OTP_LENGTH || '6'),
   },
+  admin: {
+    setupSecret: process.env.ADMIN_SETUP_SECRET || '',
+  },
 };
 
 // Validate required environment variables

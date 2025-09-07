@@ -25,6 +25,7 @@ export const authenticateToken = async (
         id: true,
         email: true,
         isVerified: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -46,4 +47,15 @@ export const authenticateToken = async (
       message: error instanceof Error ? error.message : 'Authentication failed',
     });
   }
+};
+
+export const authorizeRoles = (...roles: Array<'ADMIN' | 'SUPER_ADMIN'>) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    const user = req.user as any;
+    if (!user || !user.role || !roles.includes(user.role)) {
+      res.status(403).json({ success: false, message: 'Forbidden' });
+      return;
+    }
+    next();
+  };
 };

@@ -43,3 +43,8 @@ prisma/migrations/
 
 # Vercel
 .vercel/
+
+
+# Seperate special files
+
+admin-readme.md

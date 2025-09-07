@@ -7,6 +7,7 @@ export class JWTUtils {
     const payload = {
       id: user.id,
       email: user.email,
+      role: (user as any).role,
     };
     // @ts-ignore
     return jwt.sign(
