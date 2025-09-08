@@ -17,15 +17,25 @@ model User {
   otp          String?
   otpExpiresAt DateTime?
   isVerified   Boolean   @default(false)
-  role         Role      @default(USER)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   @@map("users")
 }
 
-enum Role {
-  USER
+model Admin {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  isVerified Boolean   @default(true)
+  role      AdminRole  @default(ADMIN)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("admins")
+}
+
+enum AdminRole {
   ADMIN
   SUPER_ADMIN
 }

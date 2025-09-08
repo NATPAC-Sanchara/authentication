@@ -124,7 +124,7 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response): Promi
   await emailService.sendWelcomeEmail(email);
 
   // Generate JWT token
-  const token = JWTUtils.generateToken(updatedUser);
+  const token = JWTUtils.generateToken(updatedUser as any, 'USER');
 
   const response: AuthResponse = {
     success: true,
@@ -208,7 +208,7 @@ export const signIn = asyncHandler(async (req: Request, res: Response): Promise<
     isVerified: user.isVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-  });
+  } as any, 'USER');
 
   const response: AuthResponse = {
     success: true,

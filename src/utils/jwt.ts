@@ -1,14 +1,15 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env';
-import { User } from '../types';
+import { Admin, User } from '../types';
 
 export class JWTUtils {
-  static generateToken(user: User): string {
+  static generateToken(subject: User | Admin, subjectType: 'USER' | 'ADMIN'): string {
     const payload = {
-      id: user.id,
-      email: user.email,
-      role: (user as any).role,
-    };
+      id: subject.id,
+      email: subject.email,
+      subjectType,
+      role: (subject as any).role,
+    } as any;
     // @ts-ignore
     return jwt.sign(
       payload,

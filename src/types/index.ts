@@ -2,7 +2,15 @@ export interface User {
   id: string;
   email: string;
   isVerified: boolean;
-  role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Admin {
+  id: string;
+  email: string;
+  isVerified: boolean;
+  role: 'ADMIN' | 'SUPER_ADMIN';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,7 +42,7 @@ export interface AuthResponse {
   success: boolean;
   message: string;
   data?: {
-    user: User;
+    user: any;
     token: string;
   };
 }
