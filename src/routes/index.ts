@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './auth';
 import adminRoutes from './admin';
+import { createGuestVisit } from '../controllers/guestController';
 
 const router = Router();
 
@@ -16,5 +17,8 @@ router.get('/health', (req, res) => {
 // API routes
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
+
+// Public guest endpoint (no auth)
+router.post('/guest', createGuestVisit);
 
 export default router;

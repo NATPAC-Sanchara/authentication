@@ -17,8 +17,6 @@ model User {
   otp          String?
   otpExpiresAt DateTime?
   isVerified   Boolean   @default(false)
-  googleId     String?   @unique
-  profilePicture String?
   role         Role      @default(USER)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

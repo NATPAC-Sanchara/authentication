@@ -1,8 +1,6 @@
 export interface User {
   id: string;
   email: string;
-  googleId?: string | null;
-  profilePicture?: string | null;
   isVerified: boolean;
   role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   createdAt: Date;

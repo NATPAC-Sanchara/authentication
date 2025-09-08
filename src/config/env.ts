@@ -12,15 +12,7 @@ export const config = {
     secret: process.env.JWT_SECRET || 'fallback-secret-key',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
-  google: {
-    clientId: process.env.GOOGLE_CLIENT_ID || '',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    redirectUri: process.env.GOOGLE_REDIRECT_URI || '',
-    linkOnEmailMatch: (process.env.GOOGLE_LINK_ON_EMAIL_MATCH || 'false').toLowerCase() === 'true',
-    // Enable Google OAuth if client ID and redirect URI are configured.
-    // Client secret is optional for Android/iOS installed apps.
-    enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_REDIRECT_URI),
-  },
+  // Google OAuth removed
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000'),
