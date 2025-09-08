@@ -54,10 +54,13 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenRe
   const body = new URLSearchParams({
     code,
     client_id: config.google.clientId,
-    client_secret: config.google.clientSecret,
     redirect_uri: config.google.redirectUri,
     grant_type: 'authorization_code',
   });
+  // Include client_secret only when provided (web apps). Android/iOS tokens don't require it.
+  if (config.google.clientSecret) {
+    body.set('client_secret', config.google.clientSecret);
+  }
   const { data } = await axios.post<GoogleTokenResponse>(GOOGLE_TOKEN_URL, body.toString(), {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     timeout: 10000,

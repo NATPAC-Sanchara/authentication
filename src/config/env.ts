@@ -17,7 +17,9 @@ export const config = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     redirectUri: process.env.GOOGLE_REDIRECT_URI || '',
     linkOnEmailMatch: (process.env.GOOGLE_LINK_ON_EMAIL_MATCH || 'false').toLowerCase() === 'true',
-    enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REDIRECT_URI),
+    // Enable Google OAuth if client ID and redirect URI are configured.
+    // Client secret is optional for Android/iOS installed apps.
+    enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_REDIRECT_URI),
   },
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
