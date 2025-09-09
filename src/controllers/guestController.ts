@@ -47,38 +47,33 @@ export const createGuestVisit = asyncHandler(async (req: Request, res: Response)
     WHERE ip_address IS NOT NULL;
   `);
 
-  // If a deviceId is provided and already recorded, return success without inserting
+  // Try to find an existing visit by deviceId or ipAddress
+  let existingVisit: { id: number } | undefined;
+
   if (deviceId) {
     const existing = await prisma.$queryRawUnsafe<{ id: number }[]>(
       `SELECT id FROM guest_visits WHERE device_id = $1 LIMIT 1;`,
       deviceId,
     );
-    const existingId = existing?.[0]?.id;
-    if (existingId) {
-      res.status(201).json({
-        success: true,
-        message: 'Guest visit recorded',
-        data: { visitId: existingId },
-      });
-      return;
-    }
+    if (existing?.[0]) existingVisit = existing[0];
   }
 
-  // If no deviceId or not found, dedupe by IP address if available
-  if (!deviceId && ipAddress) {
+  // If not found by deviceId, try by ipAddress
+  if (!existingVisit && ipAddress) {
     const existingByIp = await prisma.$queryRawUnsafe<{ id: number }[]>(
       `SELECT id FROM guest_visits WHERE ip_address = $1 LIMIT 1;`,
       ipAddress,
     );
-    const existingIpId = existingByIp?.[0]?.id;
-    if (existingIpId) {
-      res.status(201).json({
-        success: true,
-        message: 'Guest visit recorded',
-        data: { visitId: existingIpId },
-      });
-      return;
-    }
+    if (existingByIp?.[0]) existingVisit = existingByIp[0];
+  }
+
+  if (existingVisit) {
+    res.status(201).json({
+      success: true,
+      message: 'Guest visit recorded',
+      data: { visitId: existingVisit.id },
+    });
+    return;
   }
 
   const guestUsername = await generateRandomGuestUsername();
