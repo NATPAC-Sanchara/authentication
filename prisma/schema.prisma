@@ -13,6 +13,7 @@ datasource db {
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
+  username     String    @unique
   password     String
   otp          String?
   otpExpiresAt DateTime?
@@ -38,4 +39,79 @@ model Admin {
 enum AdminRole {
   ADMIN
   SUPER_ADMIN
+}
+
+model Trip {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  deviceId    String?
+  startedAt   DateTime   @default(now())
+  endedAt     DateTime?
+  startLat    Float?
+  startLng    Float?
+  endLat      Float?
+  endLng      Float?
+  modes       String[]
+  companions  Json?
+  destLat     Float?
+  destLng     Float?
+  destAddressEncrypted String?
+  metadata    Json?
+  distanceMeters  Int?
+  durationSeconds Int?
+  distanceByMode  Json?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  points      TripPoint[]
+  events      TripEvent[]
+
+  @@map("trips")
+  @@index([userId])
+}
+
+model TripPoint {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id])
+  timestamp DateTime @default(now())
+  lat       Float
+  lng       Float
+  speed     Float?
+  accuracy  Float?
+  heading   Float?
+  mode      String?
+  clientId  String?
+  createdAt DateTime @default(now())
+
+  @@map("trip_points")
+  @@index([tripId])
+  @@unique([tripId, clientId])
+}
+
+model TripEvent {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id])
+  type      String
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@map("trip_events")
+  @@index([tripId])
+}
+
+model PermissionLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  deviceId   String?
+  permission String
+  status     String
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@map("permission_logs")
+  @@index([userId])
+  @@index([deviceId])
 }

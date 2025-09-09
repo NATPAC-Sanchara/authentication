@@ -6,6 +6,7 @@ import { OTPUtils } from '../utils/otp';
 import { emailService } from '../services/emailService';
 import { CustomError, asyncHandler } from '../middleware/errorHandler';
 import { SignUpRequest, SignInRequest, VerifyOTPRequest, ResendOTPRequest, AuthResponse } from '../types';
+import { generateUniqueUsername } from '../utils/username';
 
 export const signUp = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { email, password }: SignUpRequest = req.body;
@@ -25,9 +26,13 @@ export const signUp = asyncHandler(async (req: Request, res: Response): Promise<
       const hashedOTP = OTPUtils.hashOTP(otp);
       const otpExpiry = OTPUtils.generateOTPExpiry();
 
+      // Ensure a username exists for this user
+      const ensuredUsername = existingUser.username || await generateUniqueUsername(email);
+
       await prisma.user.update({
         where: { email: email.toLowerCase() },
         data: {
+          username: ensuredUsername,
           password: hashedPassword,
           otp: hashedOTP,
           otpExpiresAt: otpExpiry,
@@ -54,9 +59,11 @@ export const signUp = asyncHandler(async (req: Request, res: Response): Promise<
   const otpExpiry = OTPUtils.generateOTPExpiry();
 
   // Create user
+  const username = await generateUniqueUsername(email);
   await prisma.user.create({
     data: {
       email: email.toLowerCase(),
+      username,
       password: hashedPassword,
       otp: hashedOTP,
       otpExpiresAt: otpExpiry,
@@ -114,6 +121,7 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response): Promi
     select: {
       id: true,
       email: true,
+      username: true,
       isVerified: true,
       createdAt: true,
       updatedAt: true,
@@ -205,6 +213,7 @@ export const signIn = asyncHandler(async (req: Request, res: Response): Promise<
   const token = JWTUtils.generateToken({
     id: user.id,
     email: user.email,
+    username: (user as any).username,
     isVerified: user.isVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -217,6 +226,7 @@ export const signIn = asyncHandler(async (req: Request, res: Response): Promise<
       user: {
         id: user.id,
         email: user.email,
+        username: (user as any).username,
         isVerified: user.isVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,

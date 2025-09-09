@@ -77,11 +77,15 @@ const computeAdminMetrics = async () => {
     verifiedUsers,
     totalAdmins,
     superAdmins,
+    totalTrips,
+    activeTrips,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { isVerified: true } }),
     prisma.admin.count(),
     prisma.admin.count({ where: { role: 'SUPER_ADMIN' as any } }),
+    prisma.trip.count(),
+    prisma.trip.count({ where: { endedAt: null } }),
   ]);
 
   const guestCountRows = await prisma.$queryRawUnsafe<Array<{ count: string }>>(
@@ -92,7 +96,7 @@ const computeAdminMetrics = async () => {
   const recentUsers = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     take: 5,
-    select: { id: true, email: true, isVerified: true, createdAt: true },
+    select: { id: true, email: true, username: true, isVerified: true, createdAt: true },
   });
 
   const recentAdmins = await prisma.admin.findMany({
@@ -103,12 +107,13 @@ const computeAdminMetrics = async () => {
 
   const recentGuestVisits = await prisma.$queryRawUnsafe<Array<{
     id: number;
+    username: string | null;
     device_id: string | null;
     platform: string | null;
     app_version: string | null;
     created_at: Date;
   }>>(
-    'SELECT id, device_id, platform, app_version, created_at FROM guest_visits ORDER BY created_at DESC LIMIT 5'
+    'SELECT id, username, device_id, platform, app_version, created_at FROM guest_visits ORDER BY created_at DESC LIMIT 5'
   ).catch(() => []);
 
   return {
@@ -117,6 +122,8 @@ const computeAdminMetrics = async () => {
       verifiedUsers,
       admins: totalAdmins,
       superAdmins,
+      trips: totalTrips,
+      activeTrips,
       guestVisits: totalGuestVisits,
     },
     recent: {
@@ -191,7 +198,7 @@ export const listUsers = asyncHandler(async (req: any, res: Response): Promise<v
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
-      select: { id: true, email: true, isVerified: true, createdAt: true, updatedAt: true },
+      select: { id: true, email: true, username: true, isVerified: true, createdAt: true, updatedAt: true },
     }),
   ]);
 
@@ -232,5 +239,154 @@ export const listGuestVisits = asyncHandler(async (req: any, res: Response): Pro
     message: 'Guest visits list',
     data: { total, page, pageSize, items },
   });
+});
+
+// =============================
+// Rich Analytics & Admin Views
+// =============================
+
+export const getAdminOverviewAnalytics = asyncHandler(async (req: any, res: Response): Promise<void> => {
+  const days = Math.max(parseInt((req.query.days as string) || '30', 10), 1);
+
+  const [metrics, tripAgg, userAgg] = await Promise.all([
+    (async () => await (await computeAdminMetrics))?.() || (await computeAdminMetrics()),
+    prisma.$queryRawUnsafe<Array<{ day: string; trips: number; distance: number; duration: number }>>(
+      `SELECT to_char(date_trunc('day', started_at), 'YYYY-MM-DD') AS day,
+              COUNT(*)::int AS trips,
+              COALESCE(SUM(distance_meters),0)::int AS distance,
+              COALESCE(SUM(duration_seconds),0)::int AS duration
+       FROM trips
+       WHERE started_at >= NOW() - INTERVAL '${days} days'
+       GROUP BY 1
+       ORDER BY 1 ASC`
+    ).catch(() => []),
+    prisma.$queryRawUnsafe<Array<{ day: string; users: number }>>(
+      `SELECT to_char(day, 'YYYY-MM-DD') AS day, COUNT(DISTINCT user_id)::int AS users
+       FROM (
+         SELECT date_trunc('day', started_at) AS day, user_id FROM trips
+         WHERE started_at >= NOW() - INTERVAL '${days} days'
+       ) t
+       GROUP BY 1
+       ORDER BY 1 ASC`
+    ).catch(() => []),
+  ]);
+
+  const avgTripDistance = await prisma.trip.aggregate({ _avg: { distanceMeters: true } });
+  const avgTripDuration = await prisma.trip.aggregate({ _avg: { durationSeconds: true } });
+
+  res.status(200).json({
+    success: true,
+    message: 'Admin overview analytics',
+    data: {
+      metrics,
+      timeseries: { trips: tripAgg, activeUsers: userAgg },
+      averages: {
+        distanceMeters: Math.round(avgTripDistance._avg.distanceMeters || 0),
+        durationSeconds: Math.round(avgTripDuration._avg.durationSeconds || 0),
+      },
+    },
+  });
+});
+
+export const listTripsAdmin = asyncHandler(async (req: any, res: Response): Promise<void> => {
+  const page = Math.max(parseInt((req.query.page as string) || '1', 10), 1);
+  const pageSize = Math.min(Math.max(parseInt((req.query.pageSize as string) || '20', 10), 1), 100);
+  const search = (req.query.search as string) || '';
+
+  const where: any = search
+    ? {
+        OR: [
+          { user: { email: { contains: search.toLowerCase() } } },
+          { user: { username: { contains: search.toLowerCase() } } },
+          { modes: { has: search.toLowerCase() } },
+        ],
+      }
+    : {};
+
+  const [total, items] = await Promise.all([
+    prisma.trip.count({ where }),
+    prisma.trip.findMany({
+      where,
+      orderBy: { startedAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        startedAt: true,
+        endedAt: true,
+        modes: true,
+        distanceMeters: true,
+        durationSeconds: true,
+        user: { select: { id: true, email: true, username: true } },
+      },
+    }),
+  ]);
+
+  res.status(200).json({ success: true, message: 'Trips list', data: { total, page, pageSize, items } });
+});
+
+export const getTripDetailAdmin = asyncHandler(async (req: any, res: Response): Promise<void> => {
+  const { tripId } = req.params as { tripId: string };
+  const trip = await prisma.trip.findUnique({
+    where: { id: tripId },
+    select: {
+      id: true,
+      startedAt: true,
+      endedAt: true,
+      modes: true,
+      distanceMeters: true,
+      durationSeconds: true,
+      startLat: true,
+      startLng: true,
+      endLat: true,
+      endLng: true,
+      destLat: true,
+      destLng: true,
+      user: { select: { id: true, email: true, username: true } },
+    },
+  });
+  if (!trip) throw new CustomError('Trip not found', 404);
+
+  const points = await prisma.tripPoint.findMany({ where: { tripId }, orderBy: { timestamp: 'asc' }, select: { timestamp: true, lat: true, lng: true, speed: true, accuracy: true } });
+  res.status(200).json({ success: true, message: 'Trip detail', data: { trip, points } });
+});
+
+export const getGuestVisitsTimeSeries = asyncHandler(async (req: any, res: Response): Promise<void> => {
+  const days = Math.max(parseInt((req.query.days as string) || '30', 10), 1);
+  const rows = await prisma.$queryRawUnsafe<Array<{ day: string; visits: number }>>(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS visits
+     FROM guest_visits
+     WHERE created_at >= NOW() - INTERVAL '${days} days'
+     GROUP BY 1
+     ORDER BY 1 ASC`
+  ).catch(() => []);
+  res.status(200).json({ success: true, message: 'Guest visits timeseries', data: rows });
+});
+
+export const getPermissionsStats = asyncHandler(async (req: any, res: Response): Promise<void> => {
+  const rows = await prisma.$queryRawUnsafe<Array<{ permission: string; status: string; count: number }>>(
+    `SELECT permission, status, COUNT(*)::int AS count
+     FROM permission_logs
+     GROUP BY permission, status
+     ORDER BY permission, status`
+  ).catch(() => []);
+  res.status(200).json({ success: true, message: 'Permissions stats', data: rows });
+});
+
+export const getTripPointsHeatmap = asyncHandler(async (req: any, res: Response): Promise<void> => {
+  const since = (req.query.since as string) || '';
+  const where = since ? `WHERE timestamp >= to_timestamp(${Number(since) / 1000})` : '';
+  // Aggregate into ~1km bins (approx 0.01 deg). Adjust for your needs.
+  const rows = await prisma.$queryRawUnsafe<Array<{ lat: number; lng: number; count: number }>>(
+    `SELECT ROUND(lat::numeric, 2)::double precision AS lat,
+            ROUND(lng::numeric, 2)::double precision AS lng,
+            COUNT(*)::int AS count
+     FROM trip_points
+     ${where}
+     GROUP BY 1,2
+     ORDER BY count DESC
+     LIMIT 10000`
+  ).catch(() => []);
+  res.status(200).json({ success: true, message: 'Trip points heatmap', data: rows });
 });
 
