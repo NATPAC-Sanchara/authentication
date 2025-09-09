@@ -115,3 +115,31 @@ model PermissionLog {
   @@index([userId])
   @@index([deviceId])
 }
+
+model CompanionContact {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("companion_contacts")
+  @@index([userId])
+}
+
+model SOSEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  triggeredAt DateTime @default(now())
+  lat         Float?
+  lng         Float?
+  handled     Boolean  @default(false)
+
+  @@map("sos_events")
+  @@index([userId])
+  @@index([triggeredAt])
+}

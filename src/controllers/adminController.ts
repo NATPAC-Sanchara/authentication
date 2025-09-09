@@ -79,6 +79,7 @@ const computeAdminMetrics = async () => {
     superAdmins,
     totalTrips,
     activeTrips,
+    totalSOS,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { isVerified: true } }),
@@ -86,6 +87,7 @@ const computeAdminMetrics = async () => {
     prisma.admin.count({ where: { role: 'SUPER_ADMIN' as any } }),
     prisma.trip.count(),
     prisma.trip.count({ where: { endedAt: null } }),
+    prisma.sOSEvent.count(),
   ]);
 
   const guestCountRows = await prisma.$queryRawUnsafe<Array<{ count: string }>>(
@@ -124,6 +126,7 @@ const computeAdminMetrics = async () => {
       superAdmins,
       trips: totalTrips,
       activeTrips,
+      sosEvents: totalSOS,
       guestVisits: totalGuestVisits,
     },
     recent: {

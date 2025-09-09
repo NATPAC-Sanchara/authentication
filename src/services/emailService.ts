@@ -120,6 +120,33 @@ export class EmailService {
     }
   }
 
+  async sendSOSEmail(to: string[], requesterEmail: string, location?: { lat?: number; lng?: number }): Promise<void> {
+    if (!to.length) return;
+    const bodyHtml = `
+      <p style="margin:0 0 16px 0;"><strong>Urgent:</strong> Your contact <strong>${requesterEmail}</strong> may need help.</p>
+      ${location?.lat !== undefined && location?.lng !== undefined ? `<p style=\"margin:0 0 16px 0;\">Last known location: <a href=\"https://maps.google.com/?q=${location.lat},${location.lng}\">${location.lat}, ${location.lng}</a></p>` : ''}
+      <p style="margin:0; color:${this.COLORS.muted};">This alert was triggered from their device via Sanchara SOS gesture.</p>
+    `;
+
+    const mailOptions = {
+      from: `"${this.BRAND_NAME} Alerts" <${config.email.user}>`,
+      to: to.join(','),
+      subject: 'Sanchara SOS Alert',
+      html: this.buildTemplate({
+        preheader: 'Sanchara SOS Alert',
+        heading: 'SOS Alert',
+        subheading: 'Your contact may need assistance',
+        bodyHtml,
+      }),
+    } as nodemailer.SendMailOptions;
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Failed to send SOS email:', error);
+    }
+  }
+
   async verifyConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();

@@ -169,32 +169,30 @@ Note: There is a `guest_visits` table created dynamically by the API (not part o
 ```http
 GET /api/health
 ```
-Purpose: Quick uptime check; used by load balancers and clients.
-Headers: none
-Success 200:
+- Purpose: Quick uptime check for clients/monitors.
+- Auth: None
+- Headers: None
+- Success 200:
 ```json
 { "success": true, "message": "Server is running", "timestamp": "2025-09-09T12:00:00.000Z" }
 ```
-Errors: none
+- Errors: None
 
 ### Users (Auth)
 - Sign Up
 ```http
 POST /api/auth/signup
 ```
-Purpose: Register a new user and send OTP for email verification.
-Headers: `Content-Type: application/json`
-Body:
-```json
-{ "email": "user@example.com", "password": "StrongP@ssw0rd!" }
-```
-Success 201:
-```json
-{ "success": true, "message": "User created successfully. OTP sent to your email for verification" }
-```
-Common errors:
-- 409: `{ "success": false, "message": "User with this email already exists and is verified" }`
-- 400: `{ "success": false, "message": "Validation error", "error": "..." }`
+• Purpose: Register a user and send OTP.
+• Auth: None
+• Headers: `Content-Type: application/json`
+• Request schema:
+  - `email: string (valid email)`
+  - `password: string (8–128 chars, strong)`
+• Success 201: `{ success, message }`
+• Errors:
+  - 400 validation
+  - 409 already exists (verified)
 Behavior:
 - Generates and stores a unique `username` from the email local-part (adds numeric/random suffixes if needed).
 - Sends an OTP email for verification.
@@ -202,73 +200,37 @@ Behavior:
 ```http
 POST /api/auth/verify-otp
 ```
-Purpose: Verify email with OTP and issue a JWT.
-Headers: `Content-Type: application/json`
-Body:
-```json
-{ "email": "user@example.com", "otp": "123456" }
-```
-Response includes:
-`user`: `{ id, email, username, isVerified, createdAt, updatedAt }` and `token`.
-Success 200:
-```json
-{
-  "success": true,
-  "message": "Email verified successfully",
-  "data": { "user": { "id": "...", "email": "...", "username": "...", "isVerified": true, "createdAt": "...", "updatedAt": "..." }, "token": "<JWT>" }
-}
-```
-Common errors:
-- 404: `{ "success": false, "message": "User not found" }`
-- 400: `{ "success": false, "message": "Invalid OTP" }` or `{ "success": false, "message": "OTP has expired" }`
+• Purpose: Verify OTP and issue JWT.
+• Headers: `Content-Type: application/json`
+• Request: `{ email, otp }`
+• Success 200: `{ success, data: { user, token } }`
+• Errors: 400 invalid/expired OTP, 404 user not found
 - Resend OTP
 ```http
 POST /api/auth/resend-otp
 ```
-Purpose: Generate and send a new OTP to unverified users.
-Headers: `Content-Type: application/json`
-Body:
-```json
-{ "email": "user@example.com" }
-```
-Success 200: `{ "success": true, "message": "OTP resent to your email" }`
-Common errors:
-- 404: `User not found`
-- 400: `Email is already verified`
+• Purpose: Send a new OTP if not verified.
+• Headers: `Content-Type: application/json`
+• Request: `{ email }`
+• Success 200: `{ success, message }`
+• Errors: 404 user not found, 400 already verified
 - Sign In
 ```http
 POST /api/auth/signin
 ```
-Purpose: Authenticate a verified user and return a JWT.
-Headers: `Content-Type: application/json`
-Body:
-```json
-{ "email": "user@example.com", "password": "StrongP@ssw0rd!" }
-```
-Response includes `username` in the user payload and token subject.
-Success 200:
-```json
-{
-  "success": true,
-  "message": "Sign in successful",
-  "data": { "user": { "id": "...", "email": "...", "username": "...", "isVerified": true, "createdAt": "...", "updatedAt": "..." }, "token": "<JWT>" }
-}
-```
-Common errors:
-- 401: `Invalid email or password`
-- 401: `Please verify your email before signing in`
+• Purpose: Authenticate and get JWT.
+• Headers: `Content-Type: application/json`
+• Request: `{ email, password }`
+• Success 200: `{ success, data: { user, token } }`
+• Errors: 401 invalid credentials, 401 not verified
 - Get Profile (requires Bearer token)
 ```http
 GET /api/auth/profile
 ```
-Purpose: Fetch the authenticated user's profile from the JWT.
-Headers: `Authorization: Bearer <token>`
-Success 200:
-```json
-{ "success": true, "message": "Profile retrieved successfully", "data": { "user": { /* token subject */ } } }
-```
-Errors:
-- 401: Missing or invalid token
+• Purpose: Fetch authenticated user (from token).
+• Headers: `Authorization: Bearer <token>`
+• Success 200: `{ success, data: { user } }`
+• Errors: 401 unauthorized
 
 ### Trips
 
@@ -276,84 +238,139 @@ Errors:
 ```http
 POST /api/trips/start-trip
 ```
-Body:
+• Purpose: Begin active trip; optionally set destination and companions. If a previous trip is open, it is closed for safety.
+• Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`
+• Body:
 ```json
 { "timestamp": 1710000000000, "lat": 12.9, "lng": 77.6, "deviceId": "abc", "modes": ["walk","car"], "companions": [{"name":"A","phone":"..."}], "destLat": 12.91, "destLng": 77.59, "destAddress": "Some place" }
 ```
-Returns:
+• Success 201:
 ```json
 { "success": true, "message": "Trip started", "data": { "trip": { "id": "...", "userId": "...", "deviceId": "abc", "startedAt": "...", "startLat": 12.9, "startLng": 77.6, "modes": ["walk","car"], "companions": [...], "destLat": 12.91, "destLng": 77.59 } } }
 ```
-Purpose: Begin an active trip; optionally sets destination and companions. Ends any previously active trip.
-Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`
-Errors:
-- 401: Unauthorized
+• Errors: 401 unauthorized
 
 - Ingest Location (single)
 ```http
 POST /api/trips/ingest-location
 ```
-Body:
+• Purpose: Append a single GPS point (optional, use batch for efficiency).
+• Headers: `Authorization: Bearer <token>`
+• Body:
 ```json
 { "tripId": "...", "timestamp": 1710000001000, "lat": 12.901, "lng": 77.601, "mode": "walk", "speed": 5.2, "accuracy": 10, "heading": 180, "clientId": "pt-1" }
 ```
-Returns: `{ "success": true, "message": "Location ingested" }`
-Purpose: Append a single location point. `clientId` is used to dedupe.
-Headers: `Authorization: Bearer <token>`
-Errors:
-- 404: `Trip not found`
-- 400: `Trip already ended`
+• Success 201: `{ success, message }`
+• Errors: 404 trip not found, 400 trip ended
 
 - Ingest Locations (batch)
 ```http
 POST /api/trips/batch-ingest
 ```
-Body:
+• Purpose: Efficient offline/periodic sync; dedup by `(tripId, clientId)`.
+• Headers: `Authorization: Bearer <token>`
+• Body:
 ```json
 { "tripId": "...", "points": [{ "clientId": "pt-1", "timestamp": 1710000001000, "lat": 12.901, "lng": 77.601, "mode": "car" }] }
 ```
-Returns: `{ "success": true, "message": "Batch locations ingested", "data": { "inserted": 1 } }`
-Purpose: Efficient offline sync; deduplicates by `(tripId, clientId)`.
-Headers: `Authorization: Bearer <token>`
-Errors:
-- 404: `Trip not found`
-- 400: `Trip already ended` or validation error
+• Success 201: `{ success, message, data: { inserted } }`
+• Errors: 404 trip not found, 400 trip ended/validation
 
 - Stop Trip
 ```http
 POST /api/trips/stop-trip
 ```
-Body:
+• Purpose: Mark trip as ended, optionally with final coordinates.
+• Headers: `Authorization: Bearer <token>`
+• Body:
 ```json
 { "tripId": "...", "timestamp": 1710003600000, "lat": 12.95, "lng": 77.55 }
 ```
-Returns: `{ "success": true, "message": "Trip stopped", "data": { "trip": { "id": "...", "startedAt": "...", "endedAt": "...", "endLat": 12.95, "endLng": 77.55 } } }`
-Purpose: Ends active trip, records final location.
-Headers: `Authorization: Bearer <token>`
-Errors:
-- 404: `Trip not found`
-- 400: `Trip already ended`
+• Success 200: `{ success, message, data: { trip } }`
+• Errors: 404 trip not found, 400 trip ended
 
 - List Trips (history)
 ```http
 GET /api/trips
 ```
-Query: `page`, `pageSize`
-Returns: `{ "success": true, "data": { "total": n, "page": 1, "pageSize": 20, "items": [{ "id": "...", "startedAt": "...", "endedAt": "...", "mode": "car", "distanceMeters": 1234, "durationSeconds": 567 }] } }`
-Purpose: Paginated list of user’s trips.
-Headers: `Authorization: Bearer <token>`
-Errors: none
+• Purpose: Paginated history for the user.
+• Headers: `Authorization: Bearer <token>`
+• Query: `page`, `pageSize`
+• Success 200: `{ success, data: { total, page, pageSize, items } }`
+• Errors: None (auth required)
 
 - Trip Detail with analytics
 ```http
 GET /api/trips/:tripId
 ```
-Returns: `{ "success": true, "data": { "trip": { "id": "...", "distanceMeters": 1234, "durationSeconds": 567, "averageSpeedMps": 2.17, ... }, "points": [{ "timestamp": "...", "lat": 12.9, "lng": 77.6, "speed": 4.5 }] } }`
-Purpose: Full route data and computed stats for visualization.
+• Purpose: Full route and computed stats for visualization.
+• Headers: `Authorization: Bearer <token>`
+• Success 200: `{ success, data: { trip, points } }`
+  - `trip.distanceByMode`: e.g. `{ "walk": 1200, "car": 5400 }`
+• Errors: 404 not found
+
+### Companions
+
+- List Companions
+```http
+GET /api/companions
+```
+Purpose: Fetch saved companion contacts for the authenticated user.
 Headers: `Authorization: Bearer <token>`
-Errors:
-- 404: `Trip not found`
-Also returns: `distanceByMode` like `{ "walk": 1200, "car": 5400 }`.
+Success 200: `{ success, message: "Companions list", data: { items: [{ id, name, email, phone, createdAt }] } }`
+Errors: 401 unauthorized
+
+- Create/Update Companion
+```http
+POST /api/companions
+```
+Body (create): `{ "name": "Alice", "email": "alice@example.com", "phone": "+11234567890" }`
+Body (update): `{ "id": "<companionId>", "name": "Alice B" }`
+Purpose: Upsert a companion contact for SOS and trip sharing.
+Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`
+Success 200: `{ success, message: "Companion saved", data: { item: { ... } } }`
+Errors: 401 unauthorized, 400 validation
+
+- Delete Companion
+```http
+DELETE /api/companions/:id
+```
+Purpose: Remove a companion contact.
+Headers: `Authorization: Bearer <token>`
+Success 200: `{ success, message: "Companion deleted" }`
+Errors: 401 unauthorized, 404 not found
+
+### SOS
+
+- Trigger SOS
+```http
+POST /api/sos
+```
+Body (optional): `{ "lat": 12.9, "lng": 77.6 }`
+Purpose: Send SOS emails to the user’s companions and log an SOS event. Intended to be called when the Android app detects the three top-down shakes gesture.
+Headers: `Authorization: Bearer <token>`
+Success 201: `{ success, message: "SOS triggered", data: { sosId: "...", notified: 2 } }`
+Errors: 401 unauthorized
+
+### Streaks & Leaderboard
+
+- Get My Streak
+```http
+GET /api/streak
+```
+Purpose: Show current daily travel streak and active days (last 60 days).
+Headers: `Authorization: Bearer <token>`
+Success 200: `{ success, message: "User streak", data: { currentStreakDays: 5, activeDaysLast60: 14 } }`
+Errors: 401 unauthorized
+
+- Weekly Leaderboard
+```http
+GET /api/leaderboard/weekly
+```
+Purpose: Top users by distance in the last 7 days; includes companions count per user.
+Headers: `Authorization: Bearer <token>`
+Success 200: `{ success, message: "Weekly leaderboard", data: { items: [{ user_id, email, username, distance, companions }] } }`
+Errors: none (auth required)
 
 - Update Trip (active)
 ```http
