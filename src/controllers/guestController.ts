@@ -16,7 +16,17 @@ export const createGuestVisit = asyncHandler(async (req: Request, res: Response)
   if (platform && typeof platform !== 'string') throw new CustomError('platform must be a string', 400);
   if (appVersion && typeof appVersion !== 'string') throw new CustomError('appVersion must be a string', 400);
 
-  const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || null;
+  // Normalize IP address for local testing
+  let ipAddress =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.socket.remoteAddress ||
+    null;
+
+  // Normalize localhost addresses for easier testing
+  if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === '::ffff:127.0.0.1') {
+    ipAddress = 'localhost';
+  }
+
   const userAgent = (req.headers['user-agent'] as string) || null;
 
   // Create table if missing (portable schema without requiring extensions)
