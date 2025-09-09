@@ -21,17 +21,23 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  // Relations
+  trips             Trip[]
+  permissionLogs    PermissionLog[]
+  companionContacts CompanionContact[]
+  sosEvents         SOSEvent[]
+
   @@map("users")
 }
 
 model Admin {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  password  String
+  id         String    @id @default(cuid())
+  email      String    @unique
+  password   String
   isVerified Boolean   @default(true)
-  role      AdminRole  @default(ADMIN)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  role       AdminRole @default(ADMIN)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@map("admins")
 }
@@ -42,32 +48,32 @@ enum AdminRole {
 }
 
 model Trip {
-  id          String     @id @default(cuid())
-  userId      String
-  user        User       @relation(fields: [userId], references: [id])
-  deviceId    String?
-  startedAt   DateTime   @default(now())
-  endedAt     DateTime?
-  startLat    Float?
-  startLng    Float?
-  endLat      Float?
-  endLng      Float?
-  modes       String[]
-  companions  Json?
-  destLat     Float?
-  destLng     Float?
+  id                   String      @id @default(cuid())
+  userId               String
+  user                 User        @relation(fields: [userId], references: [id])
+  deviceId             String?
+  startedAt            DateTime    @default(now())
+  endedAt              DateTime?
+  startLat             Float?
+  startLng             Float?
+  endLat               Float?
+  endLng               Float?
+  modes                String[]
+  companions           Json?
+  destLat              Float?
+  destLng              Float?
   destAddressEncrypted String?
-  metadata    Json?
-  distanceMeters  Int?
-  durationSeconds Int?
-  distanceByMode  Json?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  points      TripPoint[]
-  events      TripEvent[]
+  metadata             Json?
+  distanceMeters       Int?
+  durationSeconds      Int?
+  distanceByMode       Json?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  points               TripPoint[]
+  events               TripEvent[]
 
-  @@map("trips")
   @@index([userId])
+  @@map("trips")
 }
 
 model TripPoint {
@@ -84,9 +90,9 @@ model TripPoint {
   clientId  String?
   createdAt DateTime @default(now())
 
-  @@map("trip_points")
-  @@index([tripId])
   @@unique([tripId, clientId])
+  @@index([tripId])
+  @@map("trip_points")
 }
 
 model TripEvent {
@@ -97,8 +103,8 @@ model TripEvent {
   data      Json?
   createdAt DateTime @default(now())
 
-  @@map("trip_events")
   @@index([tripId])
+  @@map("trip_events")
 }
 
 model PermissionLog {
@@ -111,9 +117,9 @@ model PermissionLog {
   error      String?
   createdAt  DateTime @default(now())
 
-  @@map("permission_logs")
   @@index([userId])
   @@index([deviceId])
+  @@map("permission_logs")
 }
 
 model CompanionContact {
@@ -126,8 +132,8 @@ model CompanionContact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("companion_contacts")
   @@index([userId])
+  @@map("companion_contacts")
 }
 
 model SOSEvent {
@@ -139,7 +145,7 @@ model SOSEvent {
   lng         Float?
   handled     Boolean  @default(false)
 
-  @@map("sos_events")
   @@index([userId])
   @@index([triggeredAt])
+  @@map("sos_events")
 }
