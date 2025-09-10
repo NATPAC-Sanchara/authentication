@@ -3,9 +3,8 @@ import { prisma } from '../config/database';
 import { asyncHandler } from '../middleware/errorHandler';
 
 export const logPermission = asyncHandler(async (req: any, res: Response): Promise<void> => {
-  const user = req.user || null;
-  const { deviceid, permission, status, error } = req.body as { deviceid?: string; permission: string; status: string; error?: string };
-  const row = await prisma.permissionLog.create({ data: { userid: user?.id || null, deviceid: deviceid || null, permission, status, error: error || null } });
+  const { userid , deviceid, permission, status, error } = req.body as { userid?:string; deviceid?: string; permission: string; status: string; error?: string };
+  const row = await prisma.permissionLog.create({ data: { userid: userid || null, deviceid: deviceid || null, permission, status, error: error || null } });
   res.status(201).json({ success: true, message: 'Permission logged', data: { id: row.id } });
 });
 
