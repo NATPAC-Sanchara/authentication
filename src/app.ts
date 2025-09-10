@@ -4,7 +4,6 @@ import { config } from './config/env';
 import { 
   rateLimiter, 
   securityHeaders, 
-  corsOptions, 
   requestLogger 
 } from './middleware/security';
 import { errorHandler } from './middleware/errorHandler';
@@ -43,7 +42,8 @@ initializeServices();
 
 // Security middleware
 app.use(securityHeaders);
-app.use(corsOptions);
+// Allow all origins for CORS
+// (cors() already applied above)
 
 // Logging middleware
 if (config.nodeEnv === 'development') {
