@@ -9,8 +9,10 @@ import {
 } from './middleware/security';
 import { errorHandler } from './middleware/errorHandler';
 import routes from './routes';
+import cors from 'cors';
 
 const app = express();
+app.use(cors());
 
 // Trust proxy for accurate IP addresses (important for Vercel)
 app.set('trust proxy', 1);
