@@ -49,8 +49,8 @@ enum AdminRole {
 
 model Trip {
   id                   String      @id @default(cuid())
-  userId               String
-  user                 User        @relation(fields: [userId], references: [id])
+  userid               String
+  user                 User        @relation(fields: [userid], references: [id])
   deviceId             String?
   startedAt            DateTime    @default(now())
   endedAt              DateTime?
@@ -72,7 +72,7 @@ model Trip {
   points               TripPoint[]
   events               TripEvent[]
 
-  @@index([userId])
+  @@index([userid])
   @@map("trips")
 }
 
@@ -109,43 +109,43 @@ model TripEvent {
 
 model PermissionLog {
   id         String   @id @default(cuid())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
+  userid     String?
+  user       User?    @relation(fields: [userid], references: [id])
   deviceId   String?
   permission String
   status     String
   error      String?
   createdAt  DateTime @default(now())
 
-  @@index([userId])
+  @@index([userid])
   @@index([deviceId])
   @@map("permission_logs")
 }
 
 model CompanionContact {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userid    String
+  user      User     @relation(fields: [userid], references: [id])
   name      String
   email     String?
   phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([userId])
+  @@index([userid])
   @@map("companion_contacts")
 }
 
 model SOSEvent {
   id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  userid      String
+  user        User     @relation(fields: [userid], references: [id])
   triggeredAt DateTime @default(now())
   lat         Float?
   lng         Float?
   handled     Boolean  @default(false)
 
-  @@index([userId])
+  @@index([userid])
   @@index([triggeredAt])
   @@map("sos_events")
 }

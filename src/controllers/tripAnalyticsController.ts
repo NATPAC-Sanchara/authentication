@@ -20,9 +20,9 @@ export const listTrips = asyncHandler(async (req: any, res: Response): Promise<v
   const pageSize = Math.min(Math.max(parseInt((req.query.pageSize as string) || '20', 10), 1), 100);
 
   const [total, items] = await Promise.all([
-    prisma.trip.count({ where: { userId: user.id } }),
+    prisma.trip.count({ where: { userid: user.id } }),
     prisma.trip.findMany({
-      where: { userId: user.id },
+      where: { userid: user.id },
       orderBy: { startedAt: 'desc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -38,7 +38,7 @@ export const getTripDetail = asyncHandler(async (req: any, res: Response): Promi
   if (!user) throw new CustomError('Unauthorized', 401);
   const { tripId } = req.params as { tripId: string };
 
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId: user.id } });
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
 
   const points = await prisma.tripPoint.findMany({ where: { tripId: trip.id }, orderBy: { timestamp: 'asc' }, select: { timestamp: true, lat: true, lng: true, speed: true } });
@@ -80,7 +80,7 @@ export const updateTripDetails = asyncHandler(async (req: any, res: Response): P
   const { tripId } = req.params as { tripId: string };
   const { modes, companions, destLat, destLng, destAddress } = req.body as any;
 
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId: user.id } });
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
   if (trip.endedAt) throw new CustomError('Trip already ended', 400);
 
@@ -105,7 +105,7 @@ export const batchIngestLocations = asyncHandler(async (req: any, res: Response)
   if (!user) throw new CustomError('Unauthorized', 401);
   const { tripId, points } = req.body as { tripId: string; points: Array<{ clientId?: string; timestamp?: number | string; lat: number; lng: number; mode?: string; speed?: number; accuracy?: number; heading?: number }>; };
 
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId: user.id } });
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
   if (trip.endedAt) throw new CustomError('Trip already ended', 400);
 
@@ -143,7 +143,7 @@ export const logTripEvent = asyncHandler(async (req: any, res: Response): Promis
   if (!user) throw new CustomError('Unauthorized', 401);
   const { tripId, type, data } = req.body as { tripId: string; type: string; data?: any };
 
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId: user.id } });
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
 
   const event = await prisma.tripEvent.create({ data: { tripId: trip.id, type, data: data ?? null }, select: { id: true, type: true, createdAt: true } });

@@ -137,7 +137,7 @@ Important fields:
 Note: There is a `guest_visits` table created dynamically by the API (not part of Prisma schema). It includes a `username` column with a unique index. See Guest section below.
 
 ### Trip
-- `id`, `userId` (FK `users.id`)
+- `id`, `userid` (FK `users.id`)
 - `deviceId` (nullable)
 - `startedAt`, `endedAt` (nullable)
 - `startLat`, `startLng`, `endLat`, `endLng` (nullable)
@@ -161,7 +161,7 @@ Note: There is a `guest_visits` table created dynamically by the API (not part o
 - `id`, `tripId`, `type: string`, `data: Json?`, `createdAt`
 
 ### PermissionLog
-- `id`, `userId?`, `deviceId?`, `permission`, `status`, `error?`, `createdAt`
+- `id`, `userid?`, `deviceId?`, `permission`, `status`, `error?`, `createdAt`
 
 ## API Endpoints
 
@@ -246,7 +246,7 @@ POST /api/trips/start-trip
 ```
 • Success 201:
 ```json
-{ "success": true, "message": "Trip started", "data": { "trip": { "id": "...", "userId": "...", "deviceId": "abc", "startedAt": "...", "startLat": 12.9, "startLng": 77.6, "modes": ["walk","car"], "companions": [...], "destLat": 12.91, "destLng": 77.59 } } }
+{ "success": true, "message": "Trip started", "data": { "trip": { "id": "...", "userid": "...", "deviceId": "abc", "startedAt": "...", "startLat": 12.9, "startLng": 77.6, "modes": ["walk","car"], "companions": [...], "destLat": 12.91, "destLng": 77.59 } } }
 ```
 • Errors: 401 unauthorized
 

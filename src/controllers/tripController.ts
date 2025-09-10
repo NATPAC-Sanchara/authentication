@@ -23,13 +23,13 @@ export const startTrip = asyncHandler(async (req: any, res: Response): Promise<v
 
   // End any active trip for this user from before, safety guard
   await prisma.trip.updateMany({
-    where: { userId: user.id, endedAt: null },
+    where: { userid: user.id, endedAt: null },
     data: { endedAt: new Date() },
   });
 
   const trip = await prisma.trip.create({
     data: {
-      userId: user.id,
+      userid: user.id,
       deviceId: deviceId || null,
       startedAt,
       startLat: typeof lat === 'number' ? lat : null,
@@ -40,7 +40,7 @@ export const startTrip = asyncHandler(async (req: any, res: Response): Promise<v
       destLng: typeof destLng === 'number' ? destLng : null,
       destAddressEncrypted: destAddress ? encryptToBase64(destAddress) : null,
     },
-    select: { id: true, userId: true, deviceId: true, startedAt: true, startLat: true, startLng: true, modes: true, companions: true, destLat: true, destLng: true },
+    select: { id: true, userid: true, deviceId: true, startedAt: true, startLat: true, startLng: true, modes: true, companions: true, destLat: true, destLng: true },
   });
 
   res.status(201).json({ success: true, message: 'Trip started', data: { trip } });
@@ -62,7 +62,7 @@ export const ingestLocation = asyncHandler(async (req: any, res: Response): Prom
     mode?: string;
   };
 
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId: user.id } });
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
   if (trip.endedAt) throw new CustomError('Trip already ended', 400);
 
@@ -95,7 +95,7 @@ export const stopTrip = asyncHandler(async (req: any, res: Response): Promise<vo
     lng?: number;
   };
 
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId: user.id } });
+  const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
   if (trip.endedAt) throw new CustomError('Trip already ended', 400);
 
@@ -107,7 +107,7 @@ export const stopTrip = asyncHandler(async (req: any, res: Response): Promise<vo
       endLat: typeof lat === 'number' ? lat : null,
       endLng: typeof lng === 'number' ? lng : null,
     },
-    select: { id: true, userId: true, startedAt: true, endedAt: true, startLat: true, startLng: true, endLat: true, endLng: true, modes: true },
+    select: { id: true, userid: true, startedAt: true, endedAt: true, startLat: true, startLng: true, endLat: true, endLng: true, modes: true },
   });
 
   res.status(200).json({ success: true, message: 'Trip stopped', data: { trip: updated } });

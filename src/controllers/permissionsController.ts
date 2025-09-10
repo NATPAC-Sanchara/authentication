@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 export const logPermission = asyncHandler(async (req: any, res: Response): Promise<void> => {
   const user = req.user || null;
   const { deviceId, permission, status, error } = req.body as { deviceId?: string; permission: string; status: string; error?: string };
-  const row = await prisma.permissionLog.create({ data: { userId: user?.id || null, deviceId: deviceId || null, permission, status, error: error || null } });
+  const row = await prisma.permissionLog.create({ data: { userid: user?.id || null, deviceId: deviceId || null, permission, status, error: error || null } });
   res.status(201).json({ success: true, message: 'Permission logged', data: { id: row.id } });
 });
 
@@ -15,7 +15,7 @@ export const getPermissionStatus = asyncHandler(async (req: any, res: Response):
   const permission = (req.query.permission as string) || null;
 
   const where: any = {};
-  if (user?.id) where.userId = user.id;
+  if (user?.id) where.userid = user.id;
   if (deviceId) where.deviceId = deviceId;
   if (permission) where.permission = permission;
 
