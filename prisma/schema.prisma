@@ -51,7 +51,7 @@ model Trip {
   id                   String      @id @default(cuid())
   userid               String
   user                 User        @relation(fields: [userid], references: [id])
-  deviceId             String?
+  deviceid             String?
   startedAt            DateTime    @default(now())
   endedAt              DateTime?
   startLat             Float?
@@ -111,14 +111,14 @@ model PermissionLog {
   id         String   @id @default(cuid())
   userid     String?
   user       User?    @relation(fields: [userid], references: [id])
-  deviceId   String?
+  deviceid   String?
   permission String
   status     String
   error      String?
   createdAt  DateTime @default(now())
 
   @@index([userid])
-  @@index([deviceId])
+  @@index([deviceid])
   @@map("permission_logs")
 }
 

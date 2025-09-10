@@ -5,14 +5,14 @@ import { generateRandomGuestUsername } from '../utils/username';
 
 // Creates the guest_visits table if it does not exist, then logs a visit
 export const createGuestVisit = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { deviceId, platform, appVersion } = req.body as {
-    deviceId?: string;
+  const { deviceid, platform, appVersion } = req.body as {
+    deviceid?: string;
     platform?: string;
     appVersion?: string;
   };
 
   // Minimal validation for payload size/type
-  if (deviceId && typeof deviceId !== 'string') throw new CustomError('deviceId must be a string', 400);
+  if (deviceid && typeof deviceid !== 'string') throw new CustomError('deviceid must be a string', 400);
   if (platform && typeof platform !== 'string') throw new CustomError('platform must be a string', 400);
   if (appVersion && typeof appVersion !== 'string') throw new CustomError('appVersion must be a string', 400);
 
@@ -57,18 +57,18 @@ export const createGuestVisit = asyncHandler(async (req: Request, res: Response)
     WHERE ip_address IS NOT NULL;
   `);
 
-  // Try to find an existing visit by deviceId or ipAddress
+  // Try to find an existing visit by deviceid or ipAddress
   let existingVisit: { id: number } | undefined;
 
-  if (deviceId) {
+  if (deviceid) {
     const existing = await prisma.$queryRawUnsafe<{ id: number }[]>(
       `SELECT id FROM guest_visits WHERE device_id = $1 LIMIT 1;`,
-      deviceId,
+      deviceid,
     );
     if (existing?.[0]) existingVisit = existing[0];
   }
 
-  // If not found by deviceId, try by ipAddress
+  // If not found by deviceid, try by ipAddress
   if (!existingVisit && ipAddress) {
     const existingByIp = await prisma.$queryRawUnsafe<{ id: number }[]>(
       `SELECT id FROM guest_visits WHERE ip_address = $1 LIMIT 1;`,
@@ -91,7 +91,7 @@ export const createGuestVisit = asyncHandler(async (req: Request, res: Response)
     `INSERT INTO guest_visits (username, device_id, platform, app_version, ip_address, user_agent)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;`,
     guestUsername,
-    deviceId || null,
+    deviceid || null,
     platform || null,
     appVersion || null,
     ipAddress,

@@ -138,7 +138,7 @@ Note: There is a `guest_visits` table created dynamically by the API (not part o
 
 ### Trip
 - `id`, `userid` (FK `users.id`)
-- `deviceId` (nullable)
+- `deviceid` (nullable)
 - `startedAt`, `endedAt` (nullable)
 - `startLat`, `startLng`, `endLat`, `endLng` (nullable)
 - `modes: string[]` (e.g., `["walk","car"]`)
@@ -161,7 +161,7 @@ Note: There is a `guest_visits` table created dynamically by the API (not part o
 - `id`, `tripId`, `type: string`, `data: Json?`, `createdAt`
 
 ### PermissionLog
-- `id`, `userid?`, `deviceId?`, `permission`, `status`, `error?`, `createdAt`
+- `id`, `userid?`, `deviceid?`, `permission`, `status`, `error?`, `createdAt`
 
 ## API Endpoints
 
@@ -242,11 +242,11 @@ POST /api/trips/start-trip
 • Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`
 • Body:
 ```json
-{ "timestamp": 1710000000000, "lat": 12.9, "lng": 77.6, "deviceId": "abc", "modes": ["walk","car"], "companions": [{"name":"A","phone":"..."}], "destLat": 12.91, "destLng": 77.59, "destAddress": "Some place" }
+{ "timestamp": 1710000000000, "lat": 12.9, "lng": 77.6, "deviceid": "abc", "modes": ["walk","car"], "companions": [{"name":"A","phone":"..."}], "destLat": 12.91, "destLng": 77.59, "destAddress": "Some place" }
 ```
 • Success 201:
 ```json
-{ "success": true, "message": "Trip started", "data": { "trip": { "id": "...", "userid": "...", "deviceId": "abc", "startedAt": "...", "startLat": 12.9, "startLng": 77.6, "modes": ["walk","car"], "companions": [...], "destLat": 12.91, "destLng": 77.59 } } }
+{ "success": true, "message": "Trip started", "data": { "trip": { "id": "...", "userid": "...", "deviceid": "abc", "startedAt": "...", "startLat": 12.9, "startLng": 77.6, "modes": ["walk","car"], "companions": [...], "destLat": 12.91, "destLng": 77.59 } } }
 ```
 • Errors: 401 unauthorized
 
@@ -401,7 +401,7 @@ Errors:
 ```http
 POST /api/permissions/log
 ```
-Body: `{ "deviceId": "abc", "permission": "location", "status": "denied", "error": "user_blocked" }`
+Body: `{ "deviceid": "abc", "permission": "location", "status": "denied", "error": "user_blocked" }`
 Returns: `{ "success": true, "message": "Permission logged", "data": { "id": "..." } }`
 Purpose: Record permission outcome to aid support and fallback logic.
 Headers: public, optional `Authorization` if available
@@ -409,7 +409,7 @@ Errors: none (validated server-side)
 
 - Get Permission Status
 ```http
-GET /api/permissions/status?deviceId=abc&permission=location
+GET /api/permissions/status?deviceid=abc&permission=location
 ```
 Returns: `{ "success": true, "message": "Permission status", "data": { "permission": "location", "status": "denied", "error": "user_blocked", "createdAt": "..." } }` or `null`.
 Purpose: Allows client to understand last-known status and choose fallbacks.
@@ -459,7 +459,7 @@ Response example:
   "data": { "visitId": 123, "username": "guest-abc123" }
 }
 ```
-Errors: none (idempotent when `deviceId` repeats)
+Errors: none (idempotent when `deviceid` repeats)
 
 ## Auth & Roles
 

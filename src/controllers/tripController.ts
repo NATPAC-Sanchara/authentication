@@ -7,11 +7,11 @@ export const startTrip = asyncHandler(async (req: any, res: Response): Promise<v
   const user = req.user;
   if (!user) throw new CustomError('Unauthorized', 401);
 
-  const { timestamp, lat, lng, deviceId, modes, companions, destLat, destLng, destAddress } = req.body as {
+  const { timestamp, lat, lng, deviceid, modes, companions, destLat, destLng, destAddress } = req.body as {
     timestamp?: string | number;
     lat?: number;
     lng?: number;
-    deviceId?: string;
+    deviceid?: string;
     modes?: string[];
     companions?: any;
     destLat?: number;
@@ -30,7 +30,7 @@ export const startTrip = asyncHandler(async (req: any, res: Response): Promise<v
   const trip = await prisma.trip.create({
     data: {
       userid: user.id,
-      deviceId: deviceId || null,
+      deviceid: deviceid || null,
       startedAt,
       startLat: typeof lat === 'number' ? lat : null,
       startLng: typeof lng === 'number' ? lng : null,
@@ -40,7 +40,7 @@ export const startTrip = asyncHandler(async (req: any, res: Response): Promise<v
       destLng: typeof destLng === 'number' ? destLng : null,
       destAddressEncrypted: destAddress ? encryptToBase64(destAddress) : null,
     },
-    select: { id: true, userid: true, deviceId: true, startedAt: true, startLat: true, startLng: true, modes: true, companions: true, destLat: true, destLng: true },
+    select: { id: true, userid: true, deviceid: true, startedAt: true, startLat: true, startLng: true, modes: true, companions: true, destLat: true, destLng: true },
   });
 
   res.status(201).json({ success: true, message: 'Trip started', data: { trip } });

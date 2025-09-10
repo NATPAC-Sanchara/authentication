@@ -12,7 +12,7 @@ const startTripSchema = Joi.object({
   timestamp: Joi.alternatives(Joi.date(), Joi.number()).optional(),
   lat: Joi.number().optional(),
   lng: Joi.number().optional(),
-  deviceId: Joi.string().optional(),
+  deviceid: Joi.string().optional(),
   modes: Joi.array().items(Joi.string().valid('car', 'bike', 'walk', 'run', 'transit')).optional(),
   companions: Joi.array().items(Joi.object({ name: Joi.string().required(), phone: Joi.string().optional() })).optional(),
   destLat: Joi.number().optional(),
