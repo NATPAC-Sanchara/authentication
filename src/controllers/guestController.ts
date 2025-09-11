@@ -58,11 +58,11 @@ export const createGuestVisit = asyncHandler(async (req: Request, res: Response)
   `);
 
   // Try to find an existing visit by deviceid or ipAddress
-  let existingVisit: { id: number } | undefined;
+  let existingVisit: { id: number, username: string } | undefined;
 
   if (deviceid) {
-    const existing = await prisma.$queryRawUnsafe<{ id: number }[]>(
-      `SELECT id FROM guest_visits WHERE device_id = $1 LIMIT 1;`,
+    const existing = await prisma.$queryRawUnsafe<{ id: number, username: string }[]>(
+      `SELECT id, username FROM guest_visits WHERE device_id = $1 LIMIT 1;`,
       deviceid,
     );
     if (existing?.[0]) existingVisit = existing[0];
@@ -70,8 +70,8 @@ export const createGuestVisit = asyncHandler(async (req: Request, res: Response)
 
   // If not found by deviceid, try by ipAddress
   if (!existingVisit && ipAddress) {
-    const existingByIp = await prisma.$queryRawUnsafe<{ id: number }[]>(
-      `SELECT id FROM guest_visits WHERE ip_address = $1 LIMIT 1;`,
+    const existingByIp = await prisma.$queryRawUnsafe<{ id: number, username: string }[]>(
+      `SELECT id, username FROM guest_visits WHERE ip_address = $1 LIMIT 1;`,
       ipAddress,
     );
     if (existingByIp?.[0]) existingVisit = existingByIp[0];
@@ -81,7 +81,7 @@ export const createGuestVisit = asyncHandler(async (req: Request, res: Response)
     res.status(201).json({
       success: true,
       message: 'Guest visit recorded',
-      data: { visitId: existingVisit.id },
+      data: { visitId: existingVisit.id, username: existingVisit.username },
     });
     return;
   }
