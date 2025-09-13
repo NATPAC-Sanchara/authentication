@@ -1,11 +1,12 @@
-import { Request, Response } from 'express';
-import { prisma } from '../config/database';
-import { asyncHandler, CustomError } from '../middleware/errorHandler';
-import { encryptToBase64 } from '../utils/crypto';
+import { Request, Response } from "express";
+import { prisma } from "../config/database";
+import { asyncHandler, CustomError } from "../middleware/errorHandler";
+import { encryptAES, decryptAES } from "../utils/encryption";
 
+// Start a new trip
 export const startTrip = asyncHandler(async (req: any, res: Response): Promise<void> => {
   const user = req.user;
-  if (!user) throw new CustomError('Unauthorized', 401);
+  if (!user) throw new CustomError("Unauthorized", 401);
 
   const { timestamp, lat, lng, deviceid, modes, companions, destLat, destLng, destAddress } = req.body as {
     timestamp?: string | number;
@@ -21,7 +22,7 @@ export const startTrip = asyncHandler(async (req: any, res: Response): Promise<v
 
   const startedAt = timestamp ? new Date(timestamp) : new Date();
 
-  // End any active trip for this user from before, safety guard
+  // End any active trip for this user from before (safety guard)
   await prisma.trip.updateMany({
     where: { userid: user.id, endedAt: null },
     data: { endedAt: new Date() },
@@ -32,23 +33,42 @@ export const startTrip = asyncHandler(async (req: any, res: Response): Promise<v
       userid: user.id,
       deviceid: deviceid || null,
       startedAt,
-      startLat: typeof lat === 'number' ? lat : null,
-      startLng: typeof lng === 'number' ? lng : null,
+      startLat: typeof lat === "number" ? lat : null,
+      startLng: typeof lng === "number" ? lng : null,
       modes: Array.isArray(modes) ? modes : [],
       companions: companions ?? null,
-      destLat: typeof destLat === 'number' ? destLat : null,
-      destLng: typeof destLng === 'number' ? destLng : null,
-      destAddressEncrypted: destAddress ? encryptToBase64(destAddress) : null,
+      destLat: typeof destLat === "number" ? destLat : null,
+      destLng: typeof destLng === "number" ? destLng : null,
+      destAddressEncrypted: destAddress ? encryptAES(destAddress) : null,
     },
-    select: { id: true, userid: true, deviceid: true, startedAt: true, startLat: true, startLng: true, modes: true, companions: true, destLat: true, destLng: true },
+    select: {
+      id: true,
+      userid: true,
+      deviceid: true,
+      startedAt: true,
+      startLat: true,
+      startLng: true,
+      modes: true,
+      companions: true,
+      destLat: true,
+      destLng: true,
+      destAddressEncrypted: true,
+    },
   });
 
-  res.status(201).json({ success: true, message: 'Trip started', data: { trip } });
+  // Decrypt before sending back
+  const tripWithDecryptedAddress = {
+    ...trip,
+    destAddress: trip.destAddressEncrypted ? decryptAES(trip.destAddressEncrypted) : null,
+  };
+
+  res.status(201).json({ success: true, message: "Trip started", data: { trip: tripWithDecryptedAddress } });
 });
 
+// Ingest location points into an active trip
 export const ingestLocation = asyncHandler(async (req: any, res: Response): Promise<void> => {
   const user = req.user;
-  if (!user) throw new CustomError('Unauthorized', 401);
+  if (!user) throw new CustomError("Unauthorized", 401);
 
   const { tripId, timestamp, lat, lng, speed, accuracy, heading, clientId, mode } = req.body as {
     tripId: string;
@@ -63,30 +83,32 @@ export const ingestLocation = asyncHandler(async (req: any, res: Response): Prom
   };
 
   const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
-  if (!trip) throw new CustomError('Trip not found', 404);
-  if (trip.endedAt) throw new CustomError('Trip already ended', 400);
+  if (!trip) throw new CustomError("Trip not found", 404);
+  if (trip.endedAt) throw new CustomError("Trip already ended", 400);
 
   const when = timestamp ? new Date(timestamp) : new Date();
+
   await prisma.tripPoint.create({
     data: {
       tripId: trip.id,
       timestamp: when,
       lat,
       lng,
-      speed: typeof speed === 'number' ? speed : null,
-      accuracy: typeof accuracy === 'number' ? accuracy : null,
-      heading: typeof heading === 'number' ? heading : null,
+      speed: typeof speed === "number" ? speed : null,
+      accuracy: typeof accuracy === "number" ? accuracy : null,
+      heading: typeof heading === "number" ? heading : null,
       mode: mode || null,
       clientId: clientId || null,
     },
   });
 
-  res.status(201).json({ success: true, message: 'Location ingested' });
+  res.status(201).json({ success: true, message: "Location ingested" });
 });
 
+// Stop an active trip
 export const stopTrip = asyncHandler(async (req: any, res: Response): Promise<void> => {
   const user = req.user;
-  if (!user) throw new CustomError('Unauthorized', 401);
+  if (!user) throw new CustomError("Unauthorized", 401);
 
   const { tripId, timestamp, lat, lng } = req.body as {
     tripId: string;
@@ -96,21 +118,36 @@ export const stopTrip = asyncHandler(async (req: any, res: Response): Promise<vo
   };
 
   const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
-  if (!trip) throw new CustomError('Trip not found', 404);
-  if (trip.endedAt) throw new CustomError('Trip already ended', 400);
+  if (!trip) throw new CustomError("Trip not found", 404);
+  if (trip.endedAt) throw new CustomError("Trip already ended", 400);
 
   const endedAt = timestamp ? new Date(timestamp) : new Date();
+
   const updated = await prisma.trip.update({
     where: { id: trip.id },
     data: {
       endedAt,
-      endLat: typeof lat === 'number' ? lat : null,
-      endLng: typeof lng === 'number' ? lng : null,
+      endLat: typeof lat === "number" ? lat : null,
+      endLng: typeof lng === "number" ? lng : null,
     },
-    select: { id: true, userid: true, startedAt: true, endedAt: true, startLat: true, startLng: true, endLat: true, endLng: true, modes: true },
+    select: {
+      id: true,
+      userid: true,
+      startedAt: true,
+      endedAt: true,
+      startLat: true,
+      startLng: true,
+      endLat: true,
+      endLng: true,
+      modes: true,
+      destAddressEncrypted: true,
+    },
   });
 
-  res.status(200).json({ success: true, message: 'Trip stopped', data: { trip: updated } });
+  const tripWithDecryptedAddress = {
+    ...updated,
+    destAddress: updated.destAddressEncrypted ? decryptAES(updated.destAddressEncrypted) : null,
+  };
+
+  res.status(200).json({ success: true, message: "Trip stopped", data: { trip: tripWithDecryptedAddress } });
 });
-
-
