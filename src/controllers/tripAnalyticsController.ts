@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database';
 import { asyncHandler, CustomError } from '../middleware/errorHandler';
+import { encryptAES } from '../utils/encryption';
 
 const haversine = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   const toRad = (d: number) => (d * Math.PI) / 180;
-  const R = 6371000; // meters
+  const R = 6371000;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
@@ -41,8 +42,18 @@ export const getTripDetail = asyncHandler(async (req: any, res: Response): Promi
   const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
 
-  const points = await prisma.tripPoint.findMany({ where: { tripId: trip.id }, orderBy: { timestamp: 'asc' }, select: { timestamp: true, lat: true, lng: true, speed: true } });
-  const pointsWithMode = await prisma.tripPoint.findMany({ where: { tripId: trip.id }, orderBy: { timestamp: 'asc' }, select: { lat: true, lng: true, mode: true } });
+  const points = await prisma.tripPoint.findMany({
+    where: { tripId: trip.id },
+    orderBy: { timestamp: 'asc' },
+    select: { timestamp: true, lat: true, lng: true, speed: true },
+  });
+
+  const pointsWithMode = await prisma.tripPoint.findMany({
+    where: { tripId: trip.id },
+    orderBy: { timestamp: 'asc' },
+    select: { lat: true, lng: true, mode: true },
+  });
+
   let distance = 0;
   const byMode: Record<string, number> = {};
   for (let i = 1; i < pointsWithMode.length; i++) {
@@ -67,7 +78,7 @@ export const getTripDetail = asyncHandler(async (req: any, res: Response): Promi
         distanceMeters: Math.round(distance),
         durationSeconds: durationSec,
         averageSpeedMps: avgSpeed,
-        distanceByMode: Object.fromEntries(Object.entries(byMode).map(([k,v]) => [k, Math.round(v)])),
+        distanceByMode: Object.fromEntries(Object.entries(byMode).map(([k, v]) => [k, Math.round(v)])),
       },
       points,
     },
@@ -91,7 +102,7 @@ export const updateTripDetails = asyncHandler(async (req: any, res: Response): P
       companions: companions ?? trip.companions,
       destLat: typeof destLat === 'number' ? destLat : trip.destLat,
       destLng: typeof destLng === 'number' ? destLng : trip.destLng,
-      destAddressEncrypted: destAddress ? require('../utils/crypto').encryptToBase64(destAddress) : trip.destAddressEncrypted,
+      destAddressEncrypted: destAddress ? encryptAES(destAddress) : trip.destAddressEncrypted,
       updatedAt: new Date(),
     },
     select: { id: true, startedAt: true, endedAt: true, modes: true, destLat: true, destLng: true },
@@ -103,14 +114,16 @@ export const updateTripDetails = asyncHandler(async (req: any, res: Response): P
 export const batchIngestLocations = asyncHandler(async (req: any, res: Response): Promise<void> => {
   const user = req.user;
   if (!user) throw new CustomError('Unauthorized', 401);
-  const { tripId, points } = req.body as { tripId: string; points: Array<{ clientId?: string; timestamp?: number | string; lat: number; lng: number; mode?: string; speed?: number; accuracy?: number; heading?: number }>; };
+  const { tripId, points } = req.body as {
+    tripId: string;
+    points: Array<{ clientId?: string; timestamp?: number | string; lat: number; lng: number; mode?: string; speed?: number; accuracy?: number; heading?: number }>;
+  };
 
   const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
   if (trip.endedAt) throw new CustomError('Trip already ended', 400);
 
   const data = (points || []).slice(0, 1000).map((p) => ({
-    id: undefined as any,
     tripId: trip.id,
     timestamp: p.timestamp ? new Date(p.timestamp) : new Date(),
     lat: p.lat,
@@ -120,21 +133,10 @@ export const batchIngestLocations = asyncHandler(async (req: any, res: Response)
     heading: typeof p.heading === 'number' ? p.heading : null,
     mode: p.mode || null,
     clientId: p.clientId || null,
-    createdAt: undefined as any,
   }));
 
-  // Deduplicate by (tripId, clientId) where clientId provided
-  const withClientId = data.filter((d) => d.clientId);
-  if (withClientId.length > 0) {
-    const values = withClientId.map((d) => `('${d.tripId}','${d.clientId}')`).join(',');
-    await prisma.$executeRawUnsafe(`
-      DELETE FROM trip_points t
-      USING (VALUES ${values}) AS v(tripId, clientId)
-      WHERE t.trip_id = v.tripId AND t.client_id = v.clientId;
-    `);
-  }
-
   await prisma.tripPoint.createMany({ data, skipDuplicates: true });
+
   res.status(201).json({ success: true, message: 'Batch locations ingested', data: { inserted: data.length } });
 });
 
@@ -146,8 +148,10 @@ export const logTripEvent = asyncHandler(async (req: any, res: Response): Promis
   const trip = await prisma.trip.findFirst({ where: { id: tripId, userid: user.id } });
   if (!trip) throw new CustomError('Trip not found', 404);
 
-  const event = await prisma.tripEvent.create({ data: { tripId: trip.id, type, data: data ?? null }, select: { id: true, type: true, createdAt: true } });
+  const event = await prisma.tripEvent.create({
+    data: { tripId: trip.id, type, data: data ?? null },
+    select: { id: true, type: true, createdAt: true },
+  });
+
   res.status(201).json({ success: true, message: 'Event logged', data: { event } });
 });
-
-
